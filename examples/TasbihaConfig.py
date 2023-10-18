@@ -14,6 +14,8 @@ from pathlib import Path
 from os.path import dirname, realpath
 import sys
 import time
+import shlex
+
 class RunnerConfig:
     ROOT_DIR = Path(dirname(realpath(__file__)))
 
@@ -57,7 +59,7 @@ class RunnerConfig:
         # self.workload = workload
 
         self.governor = "performance"  # Store the governor as an instance variable
-        self.workload = "adduser"
+        self.workload = "adduser"   # add pick randomly feature
         self.jmeter_command = None
         # ssh part
         self.ssh = paramiko.SSHClient()
@@ -184,19 +186,30 @@ class RunnerConfig:
 
         output.console_log("Config.start_measurement() called!")
 
+
         print("Sleeping for 1 sec")
         time.sleep(1)
         print("Starting measurement..")
-        measurementCommand = '''timeout 5s docker stats --format "table {{.Name}}\\t{{.CPUPerc}}\\t{{.MemUsage}}" | awk \'{print $1","$2","$3}\' > docker_usage'''
-        measurementCommand = measurementCommand + str(experimentCount) + '.csv'
-        experimentCount = experimentCount + 1
-        print("EXP COUNT", experimentCount)
+        measurementCommand = '''timeout 5s docker stats --format "table {{.Name}}\\t{{.CPUPerc}}\\t{{.MemUsage}}" | awk \'{print $1","$2","$3}\' >> docker_usage &''' # add custom filename that contains workload and governor
+        # measurementCommand = measurementCommand + str(experimentCount) + '.csv'
+        # experimentCount = experimentCount + 1
+        # print("EXP COUNT", experimentCount)
         # measurementCommand = "mkdir testDir"
         print(measurementCommand)
         print("Establishing ssh connection...")
         self.ssh.connect('145.108.225.17', username='greenTeam', password='greenTea')
         print("ssh connect successful")
         paramiko.common.logging.basicConfig(level=paramiko.common.DEBUG)
+
+        print("Starting Powerjoular")
+        profiler_cmd = 'echo greenTea | sudo -S timeout 5s powerjoular -l -f powerjoular.csv &'
+        # time.sleep(1) # allow the process to run a little before measuring
+
+        stdin, stdout, stderr = self.ssh.exec_command(profiler_cmd)
+        print("Started Powerjoular:", profiler_cmd)
+        print(stdout.read().decode())
+        print(stderr.read().decode())
+
 
         stdin, stdout, stderr = self.ssh.exec_command(measurementCommand)
         
