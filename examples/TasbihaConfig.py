@@ -86,7 +86,10 @@ class RunnerConfig:
         print("CREATING RUN TABLE")
         factor1 = FactorModel("Linux_Governor", ['performance', 'powersave'])
         
-        factor2 = FactorModel("Workload", ['buy_ticket_1000', 'buy_ticket_500', 'buy_ticket_100',
+        # factor2 = FactorModel("Workload", ['buy_ticket_1000', 'buy_ticket_500', 'buy_ticket_100',
+        #                                         'list_orders_1000', 'list_orders_500', 'list_orders_100'])
+
+        factor2 = FactorModel("Workload", ['MakeConsignment_1000', 'MakeConsignment_500', 'MakeConsignment_100',
                                                 'list_orders_1000', 'list_orders_500', 'list_orders_100'])
         self.run_table_model = RunTableModel(
             factors=[factor1, factor2],
@@ -184,12 +187,12 @@ class RunnerConfig:
         print(self.jmeter_command + "buy_ticket.jmx -l " + location + 'results.jtl -Jusers=1000')
         print("SUCCESS")
 
-        if workload == 'buy_ticket_1000':
-            self.jmeter_command = self.jmeter_command + "buy_ticket.jmx -l " + location +  'results.jtl -Jusers=1000' 
-        elif workload == 'buy_ticket_500':
-            self.jmeter_command = self.jmeter_command + "buy_ticket.jmx -l "  + location +  'results.jtl -Jusers=500' 
-        elif workload == 'buy_ticket_100':
-            self.jmeter_command = self.jmeter_command + "buy_ticket.jmx -l "  + location +  'results.jtl -Jusers=100' 
+        if workload == 'MakeConsignment_1000':
+            self.jmeter_command = self.jmeter_command + "MakeConsignment.jmx -l " + location +  'results.jtl -Jusers=1000' 
+        elif workload == 'MakeConsignment_500':
+            self.jmeter_command = self.jmeter_command + "MakeConsignment.jmx -l "  + location +  'results.jtl -Jusers=500' 
+        elif workload == 'MakeConsignment_100':
+            self.jmeter_command = self.jmeter_command + "MakeConsignment.jmx -l "  + location +  'results.jtl -Jusers=100' 
         elif workload == 'list_orders_1000':
             self.jmeter_command = self.jmeter_command + "ListOrders.jmx -l "  + location +  'results.jtl -Jusers=1000' 
         elif workload == 'list_orders_500':
