@@ -1,3 +1,4 @@
+import re
 from EventManager.Models.RunnerEvents import RunnerEvents
 from EventManager.EventSubscriptionController import EventSubscriptionController
 from ConfigValidator.Config.Models.RunTableModel import RunTableModel
@@ -15,7 +16,7 @@ from os.path import dirname, realpath
 import sys
 import time
 import shlex
-
+import pandas as pd
 class RunnerConfig:
     ROOT_DIR = Path(dirname(realpath(__file__)))
 
@@ -57,7 +58,14 @@ class RunnerConfig:
         self.run_table_model = None  # Initialized later
         # self.governor = governor  # Store the governor as an instance variable
         # self.workload = workload
-
+        # self.governors = ['performance', 'powersave', 'ondemand']
+        # self.workloads = [
+        #     'findroute (1000 users)', 'findroute (500 users)', 'findroute (100 users)',
+        #     'buytickets (1000 users)', 'buytickets (500 users)', 'buytickets (100 users)'
+        # ]
+        # self.run_table_model = self.create_run_table_model(self.governors, self.workloads)
+        self.powerjoularFileName = None
+        self.dockerCsvFileName = None
         self.governor = "performance"  # Store the governor as an instance variable
         self.workload = "adduser"   # add pick randomly feature
         self.jmeter_command = None
@@ -67,39 +75,28 @@ class RunnerConfig:
         self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())  # Automatically add unknown hosts
 
 
-        self.configure_jmeter(self.workload)
 
         output.console_log("Custom config loaded")
-
-    def configure_jmeter(self, workload):
-        print("Configuring jmeter")
-        """Configure JMeter for the specified workload type."""
-        if workload == 'adduser':
-            # self.jmeter_command = "jmeter -n -t findroute_1000_users.jmx"
-            self.jmeter_command = "/Users/el/Downloads/apache-jmeter-5.6.2/bin/jmeter -n -t addUser.jmx"
-            # self.jmeter_command = '/Users/el/Downloads/apache-jmeter-5.6.2/bin/jmeter -Jthreads="$customers" -t $1 -n -l addUser.jmx'
-
-            print("Jmeter configured.")
-            ## write others.
 
         
 
     def create_run_table_model(self) -> RunTableModel:
         """Create and return the run_table model here. A run_table is a List (rows) of tuples (columns),
         representing each run performed"""
-
+        print("CREATING RUN TABLE")
         factor1 = FactorModel("Linux_Governor", ['performance', 'powersave'])
-        factor2 = FactorModel("Workload", ['findroute (1000 users)', 'findroute (500 users)', 'findroute (100 users)',
-                                                'buy tickets (1000 users)', 'buy tickets (500 users)', 'buy tickets (100 users)'])
+        
+        factor2 = FactorModel("Workload", ['buy_ticket_1000', 'buy_ticket_500', 'buy_ticket_100',
+                                                'list_orders_1000', 'list_orders_500', 'list_orders_100'])
         self.run_table_model = RunTableModel(
             factors=[factor1, factor2],
             exclude_variations=[
                 # Define any exclusions as needed
             ],
-            data_columns=['avg_cpu', 'avg_mem']
+            data_columns=['avg_cpu', 'avg_mem', 'avg_cpu_powerjoular', 'avg_power']
         )
         return self.run_table_model
-
+ 
 
     def before_experiment(self) -> None:
         """Perform any activity required before starting the experiment here
@@ -156,6 +153,8 @@ class RunnerConfig:
         # self.ssh.close()
         output.console_log("Config.before_run() called!")
 
+
+
     def start_run(self, context: RunnerContext) -> None:
         """Perform any activity required for starting the run here.
         For example, starting the target system to measure.
@@ -172,8 +171,33 @@ class RunnerConfig:
         # stdin, stdout, stderr = self.ssh.exec_command("docker system prune -a")
         # print(stdout.read().decode())
         # stdin, stdout, stderr = self.ssh.exec_command("docker-compose -f docker-compose.yml up")
-
+        #['buy_ticket_1000', 'buy_ticket_500', 'buy_ticket__100', 'list_orders_1000', 'list_orders_500', 'list_orders_100']
         output.console_log("Config.start_run() called!")
+        self.jmeter_command = "/Users/el/Downloads/apache-jmeter-5.6.2/bin/jmeter -n -t "
+        workload = context.run_variation['Workload']
+        print("HERE YOU GO")
+        print(context.run_dir)
+        print("DIRIRIRI")
+
+        location = str(context.run_dir) + '/'
+
+        print(self.jmeter_command + "buy_ticket.jmx -l " + location + 'results.jtl -Jusers=1000')
+        print("SUCCESS")
+
+        if workload == 'buy_ticket_1000':
+            self.jmeter_command = self.jmeter_command + "buy_ticket.jmx -l " + location +  'results.jtl -Jusers=1000' 
+        elif workload == 'buy_ticket_500':
+            self.jmeter_command = self.jmeter_command + "buy_ticket.jmx -l "  + location +  'results.jtl -Jusers=500' 
+        elif workload == 'buy_ticket_100':
+            self.jmeter_command = self.jmeter_command + "buy_ticket.jmx -l "  + location +  'results.jtl -Jusers=100' 
+        elif workload == 'list_orders_1000':
+            self.jmeter_command = self.jmeter_command + "ListOrders.jmx -l "  + location +  'results.jtl -Jusers=1000' 
+        elif workload == 'list_orders_500':
+            self.jmeter_command = self.jmeter_command + "ListOrders.jmx -l "  + location + 'results.jtl -Jusers=500' 
+        elif workload == 'list_orders_100':
+            self.jmeter_command = self.jmeter_command + "ListOrders.jmx -l "  + location + 'results.jtl -Jusers=100'
+        print("Jmeter successfully configured.")
+
 
         print("Running jmeter subprocess")
         result = subprocess.Popen(self.jmeter_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -189,9 +213,17 @@ class RunnerConfig:
 
         print("Sleeping for 1 sec")
         time.sleep(1)
+
         print("Starting measurement..")
-        measurementCommand = '''timeout 5s docker stats --format "table {{.Name}}\\t{{.CPUPerc}}\\t{{.MemUsage}}" | awk \'{print $1","$2","$3}\' >> docker_usage &''' # add custom filename that contains workload and governor
-        # measurementCommand = measurementCommand + str(experimentCount) + '.csv'
+        contextGovernor = context.run_variation['Linux_Governor']
+        contextWorkload = context.run_variation['Workload']
+
+
+        # measurementCommand = '''timeout 5s docker stats --format "table {{.Name}}\\t{{.CPUPerc}}\\t{{.MemUsage}}" | awk \'{print $1","$2","$3}\' >> docker_usage''' # add custom filename that contains workload and governor
+        measurementCommand = '''timeout 5s docker stats --no-stream --format "table {{.Name}}\\t{{.CPUPerc}}\\t{{.MemUsage}}" | tail -n +2 | awk '{print $1","$2","$3}' >> '''
+        self.dockerCsvFileName = "docker_usage" + "_" + contextGovernor + "_" + contextWorkload + '.csv'
+        # measurementCommand = measurementCommand + "_" + self.governor + "_" + self.workload + '.csv'
+        measurementCommand = measurementCommand + self.dockerCsvFileName
         # experimentCount = experimentCount + 1
         # print("EXP COUNT", experimentCount)
         # measurementCommand = "mkdir testDir"
@@ -199,23 +231,39 @@ class RunnerConfig:
         print("Establishing ssh connection...")
         self.ssh.connect('145.108.225.17', username='greenTeam', password='greenTea')
         print("ssh connect successful")
-        paramiko.common.logging.basicConfig(level=paramiko.common.DEBUG)
+        # paramiko.common.logging.basicConfig(level=paramiko.common.DEBUG)
 
+
+        if contextGovernor == 'performance':
+            governorCommand = 'sudo cpufreq-set -g performance'
+        elif contextGovernor == 'powersave':
+            governorCommand =   'sudo cpufreq-set -g powersave'
+
+        self.ssh.exec_command(governorCommand)
+        print("Set linux governor to", contextGovernor)
+        # print(governorCommand)
         print("Starting Powerjoular")
-        profiler_cmd = 'echo greenTea | sudo -S timeout 5s powerjoular -l -f powerjoular.csv &'
+        # profiler_cmd = 'echo greenTea | sudo -S timeout 5s powerjoular -l -f powerjoular'
+        # profiler_cmd = profiler_cmd + "_" + self.governor + "_" + self.workload + '.csv'
+
+        profiler_cmd = 'echo greenTea | sudo -S timeout 5s powerjoular -l -f '
+        self.powerjoularFileName = "powerjoular" + "_" + contextGovernor + "_" + contextWorkload + '.csv'
+        profiler_cmd = profiler_cmd + self.powerjoularFileName
+        print(profiler_cmd)
         # time.sleep(1) # allow the process to run a little before measuring
 
-        stdin, stdout, stderr = self.ssh.exec_command(profiler_cmd)
+        stdinP, stdoutP, stderrP = self.ssh.exec_command(profiler_cmd)
         print("Started Powerjoular:", profiler_cmd)
-        print(stdout.read().decode())
-        print(stderr.read().decode())
 
-
-        stdin, stdout, stderr = self.ssh.exec_command(measurementCommand)
-        
-        print("Measurement command sent via SSH")
-        print(stdout.read().decode())
-        print(stderr.read().decode())
+        print("Sending measurement command...")
+        stdinD, stdoutD, stderrD = self.ssh.exec_command(measurementCommand)
+        print("Powerjoular outputs:")
+        print(stdoutP.read().decode())
+        print(stderrP.read().decode())
+        print("===================")
+        print("Docker measurement outputs:")
+        print(stdoutD.read().decode())
+        print(stderrD.read().decode())
         self.ssh.close()
 
     def interact(self, context: RunnerContext) -> None:
@@ -235,6 +283,26 @@ class RunnerConfig:
         ## clean up database. 
 
         output.console_log("Config.stop_run() called!")
+        try:
+            # Connect to the remote server
+            self.ssh.connect('145.108.225.17', username='greenTeam', password='greenTea')
+            print("SSH SUCCESS AGAIN")
+            # Create an SFTP client
+            sftp = self.ssh.open_sftp()
+
+            # Download the file
+
+            sftp.get("/home/greenTeam/" + self.dockerCsvFileName, context.run_dir / 'docker.csv')
+            # time.sleep(0.5)
+            sftp.get("/home/greenTeam/" + self.powerjoularFileName, context.run_dir / 'powerjoular.csv')
+
+            print(f"File '{self.dockerCsvFileName}' downloaded successfully to", context.run_dir)
+            print(f"File '{self.powerjoularFileName}' downloaded successfully to", context.run_dir)
+
+        finally:
+            # Close the SFTP session and SSH connection
+            sftp.close()
+            self.ssh.close()
 
     def populate_run_data(self, context: RunnerContext) -> Optional[Dict[str, SupportsStr]]:
         """Parse and process any measurement data here.
@@ -242,8 +310,68 @@ class RunnerConfig:
         Returns a dictionary with keys `self.run_table_model.data_columns` and their values populated"""
         # Process the measurement data (adjust the data processing code)
         ## Use the generated CSV (in stop measurement function)
-
         output.console_log("Config.populate_run_data() called!")
+        # Read the CSV file into a DataFrame
+        print("tryna read", context.run_dir / 'docker.csv')
+
+        # df = pd.read_csv(context.run_dir / 'docker.csv')
+        # print("FILE READ SUCCESSFULLY")
+        # # print(df[1])
+        # # Remove the '%' character from the values in the second column and convert them to floats
+        # df.iloc[:, 1] = df.iloc[:, 1].apply(lambda x: float(x.rstrip('%')))
+        # print("RSTRIP DONE")
+
+        # # Calculate the average of the second column
+        # avg_cpu = df.iloc[:, 1].mean()
+        # df.iloc[:, 2] = df.iloc[:, 2].apply(lambda x: float(re.findall(r'\d+\.\d+', x)[0]))
+        # # Calculate the average of the third column
+        # avg_mem = df.iloc[:, 1].mean()
+
+        import csv
+
+        values = []
+        valuesMEM = []
+
+        with open(context.run_dir / 'docker.csv') as f:
+            reader = csv.reader(f)
+            for row in reader:
+                if row[2] == '0B':
+                    continue
+
+                value = float(row[1].strip('%'))
+                # print("APPENDING VALUE", value)
+                values.append(value)
+
+                valueMEM = row[2].split('MiB')[0]
+                valueMEM = float(valueMEM) 
+                # print("APPENDING VALUEMEM", valueMEM)
+
+                valuesMEM.append(valueMEM)
+
+        avg_cpu = sum(values) / len(values)
+        avg_cpu = round(avg_cpu, 3)
+
+        avg_mem = sum(valuesMEM) / len(valuesMEM) 
+        avg_mem = round(avg_mem, 3)
+
+        # ========= powerjoular ==========
+
+        data = pd.read_csv(context.run_dir / 'powerjoular.csv')
+        avg_cpu_powerjoular = data['CPU Utilization'].mean()
+        avg_cpu_powerjoular = round(avg_cpu_powerjoular, 3)
+
+        avg_power = data['Total Power'].mean()
+        avg_power = round(avg_power, 3)
+
+        run_data = {
+            
+            'avg_cpu': avg_cpu,
+            'avg_mem': avg_mem,
+            'avg_cpu_powerjoular': avg_cpu_powerjoular,
+            'avg_power': avg_power
+        }
+
+        return run_data
         # return data
     
     def after_experiment(self) -> None:
