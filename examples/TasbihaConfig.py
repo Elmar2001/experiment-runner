@@ -181,10 +181,6 @@ class RunnerConfig:
         print("Jmeter successfully configured.")
 
 
-        print("Running jmeter subprocess")
-        result = subprocess.Popen(self.jmeter_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        print("Jmeter command run:", self.jmeter_command)
-
     def start_measurement(self, context: RunnerContext) -> None:
         """Perform any activity required for starting measurements."""
         ## Collect CPU and memory usage. docker stats command
@@ -222,8 +218,12 @@ class RunnerConfig:
         print(stderrG.read().decode())
 
         print("Set linux governor to", contextGovernor)
-        print("Starting Powerjoular")
 
+        print("Running jmeter subprocess")
+        result = subprocess.Popen(self.jmeter_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        print("Jmeter command run:", self.jmeter_command)
+
+        print("Starting Powerjoular")
         profiler_cmd = 'echo greenTea | sudo -S timeout 5s powerjoular -l -f '
         self.powerjoularFileName = "powerjoular" + "_" + contextGovernor + "_" + contextWorkload + '.csv'
         profiler_cmd = profiler_cmd + self.powerjoularFileName
