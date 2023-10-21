@@ -85,18 +85,16 @@ class RunnerConfig:
         representing each run performed"""
         print("CREATING RUN TABLE")
         factor1 = FactorModel("Linux_Governor", ['performance', 'powersave'])
-        
-        # factor2 = FactorModel("Workload", ['buy_ticket_1000', 'buy_ticket_500', 'buy_ticket_100',
-        #                                         'list_orders_1000', 'list_orders_500', 'list_orders_100'])
-
         factor2 = FactorModel("Workload", ['MakeConsignment_1000', 'MakeConsignment_500', 'MakeConsignment_100',
                                                 'list_orders_1000', 'list_orders_500', 'list_orders_100'])
+        # factor2 = FactorModel("Workload", ['MakeConsignment_1000','list_orders_1000', 'MakeConsignment_500',  'list_orders_500', 'MakeConsignment_100', 'list_orders_100'])
         self.run_table_model = RunTableModel(
             factors=[factor1, factor2],
             exclude_variations=[
                 # Define any exclusions as needed
             ],
-            data_columns=['avg_cpu', 'avg_mem', 'avg_cpu_powerjoular', 'avg_power']
+            data_columns=['avg_cpu', 'avg_mem', 'avg_cpu_powerjoular', 'avg_power'],
+            shuffle=True,
         )
         return self.run_table_model
  
@@ -162,30 +160,11 @@ class RunnerConfig:
         """Perform any activity required for starting the run here.
         For example, starting the target system to measure.
         Activities after starting the run should also be performed here."""
-        ## Two parts: run the server, then send workloads
-        ## 1. Docker Run here to start the server
-        ## Sleep for some time
-        ## 2. send workloads: self.subprocess.run(self.jmeter_command, shell=True)
-        # print("Running jmeter subprocess")
-        # result = subprocess.run(self.jmeter_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        # print("Input:", self.jmeter_command)
-        # print("Output:", result.stdout.decode('utf-8'))
-        # print("Error:", result.stderr.decode('utf-8'))
-        # stdin, stdout, stderr = self.ssh.exec_command("docker system prune -a")
-        # print(stdout.read().decode())
-        # stdin, stdout, stderr = self.ssh.exec_command("docker-compose -f docker-compose.yml up")
-        #['buy_ticket_1000', 'buy_ticket_500', 'buy_ticket__100', 'list_orders_1000', 'list_orders_500', 'list_orders_100']
         output.console_log("Config.start_run() called!")
         self.jmeter_command = "/Users/el/Downloads/apache-jmeter-5.6.2/bin/jmeter -n -t "
         workload = context.run_variation['Workload']
-        print("HERE YOU GO")
-        print(context.run_dir)
-        print("DIRIRIRI")
-
         location = str(context.run_dir) + '/'
 
-        print(self.jmeter_command + "buy_ticket.jmx -l " + location + 'results.jtl -Jusers=1000')
-        print("SUCCESS")
 
         if workload == 'MakeConsignment_1000':
             self.jmeter_command = self.jmeter_command + "MakeConsignment.jmx -l " + location +  'results.jtl -Jusers=1000' 
@@ -209,7 +188,6 @@ class RunnerConfig:
     def start_measurement(self, context: RunnerContext) -> None:
         """Perform any activity required for starting measurements."""
         ## Collect CPU and memory usage. docker stats command
-        # stdin, stdout, stderr = self.ssh.exec_command("timeout 5s docker stats --format \"table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}" | awk '{print $1","$2","$3}\' > docker_usage.csv")
 
         output.console_log("Config.start_measurement() called!")
 
@@ -222,14 +200,10 @@ class RunnerConfig:
         contextWorkload = context.run_variation['Workload']
 
 
-        # measurementCommand = '''timeout 5s docker stats --format "table {{.Name}}\\t{{.CPUPerc}}\\t{{.MemUsage}}" | awk \'{print $1","$2","$3}\' >> docker_usage''' # add custom filename that contains workload and governor
         measurementCommand = '''timeout 5s docker stats --no-stream --format "table {{.Name}}\\t{{.CPUPerc}}\\t{{.MemUsage}}" | tail -n +2 | awk '{print $1","$2","$3}' >> '''
         self.dockerCsvFileName = "docker_usage" + "_" + contextGovernor + "_" + contextWorkload + '.csv'
-        # measurementCommand = measurementCommand + "_" + self.governor + "_" + self.workload + '.csv'
         measurementCommand = measurementCommand + self.dockerCsvFileName
-        # experimentCount = experimentCount + 1
-        # print("EXP COUNT", experimentCount)
-        # measurementCommand = "mkdir testDir"
+
         print(measurementCommand)
         print("Establishing ssh connection...")
         self.ssh.connect('145.108.225.17', username='greenTeam', password='greenTea')
@@ -238,16 +212,17 @@ class RunnerConfig:
 
 
         if contextGovernor == 'performance':
-            governorCommand = 'sudo cpufreq-set -g performance'
+            governorCommand = 'echo greenTea | sudo -S cpufreq-set -g performance'
         elif contextGovernor == 'powersave':
-            governorCommand =   'sudo cpufreq-set -g powersave'
+            governorCommand = 'echo greenTea | sudo -S cpufreq-set -g powersave'
 
-        self.ssh.exec_command(governorCommand)
+        stdinG, stdoutG, stderrG = self.ssh.exec_command(governorCommand)
+        print("Powerjoular outputs:")
+        print(stdoutG.read().decode())
+        print(stderrG.read().decode())
+
         print("Set linux governor to", contextGovernor)
-        # print(governorCommand)
         print("Starting Powerjoular")
-        # profiler_cmd = 'echo greenTea | sudo -S timeout 5s powerjoular -l -f powerjoular'
-        # profiler_cmd = profiler_cmd + "_" + self.governor + "_" + self.workload + '.csv'
 
         profiler_cmd = 'echo greenTea | sudo -S timeout 5s powerjoular -l -f '
         self.powerjoularFileName = "powerjoular" + "_" + contextGovernor + "_" + contextWorkload + '.csv'

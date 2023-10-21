@@ -1,0 +1,13 @@
+__run_id,__done,Linux_Governor,Workload,avg_cpu,avg_mem,avg_cpu_powerjoular,avg_power
+run_7,DONE,powersave,list_orders_1000,0.281,248.338,0.141,33.625
+run_8,DONE,powersave,MakeConsignment_500,19.249,254.939,0.266,32.074
+run_1,DONE,performance,list_orders_1000,15.022,254.942,0.156,30.555
+run_11,DONE,powersave,list_orders_100,6.189,254.979,0.242,30.871
+run_4,DONE,performance,MakeConsignment_100,23.011,251.745,0.211,31.934
+run_10,DONE,powersave,MakeConsignment_100,19.674,248.497,0.156,31.055
+run_2,DONE,performance,MakeConsignment_500,18.53,248.505,0.258,33.422
+run_5,TODO,performance,list_orders_100, , , , 
+run_9,DONE,powersave,list_orders_500,19.299,251.713,0.164,30.48
+run_6,DONE,powersave,MakeConsignment_1000,19.253,255.037,0.156,30.727
+run_3,DONE,performance,list_orders_500,18.037,255.053,0.25,30.375
+run_0,DONE,performance,MakeConsignment_1000,19.97,255.091,0.25,32.617
