@@ -9,6 +9,7 @@ from ExtendedTyping.Typing import SupportsStr
 from ProgressManager.Output.OutputProcedure import OutputProcedure as output
 import paramiko
 import subprocess
+import signal
 
 from typing import Dict, List, Any, Optional
 from pathlib import Path
@@ -69,6 +70,7 @@ class RunnerConfig:
         self.governor = "performance"  # Store the governor as an instance variable
         self.workload = "adduser"   # add pick randomly feature
         self.jmeter_command = None
+        self.timeout = 0
         # ssh part
         self.ssh = paramiko.SSHClient()
         self.ssh.load_system_host_keys()  # Load known host keys
@@ -85,16 +87,20 @@ class RunnerConfig:
         representing each run performed"""
         print("CREATING RUN TABLE")
         factor1 = FactorModel("Linux_Governor", ['performance', 'powersave'])
-        factor2 = FactorModel("Workload", ['MakeConsignment_1000', 'MakeConsignment_500', 'MakeConsignment_100',
-                                                'list_orders_1000', 'list_orders_500', 'list_orders_100'])
+        # factor2 = FactorModel("Workload", ['MakeConsignment_1000', 'MakeConsignment_500', 'MakeConsignment_100',
+        #                                         'list_orders_1000', 'list_orders_500', 'list_orders_100'])
+
         # factor2 = FactorModel("Workload", ['MakeConsignment_1000','list_orders_1000', 'MakeConsignment_500',  'list_orders_500', 'MakeConsignment_100', 'list_orders_100'])
+
+        factor2 = FactorModel("Workload", ['buy_ticket_1000', 'buy_ticket_500', 'buy_ticket_100',
+                                   'list_orders_1000', 'list_orders_500', 'list_orders_100'])
         self.run_table_model = RunTableModel(
             factors=[factor1, factor2],
             exclude_variations=[
                 # Define any exclusions as needed
             ],
-            data_columns=['avg_cpu', 'avg_mem', 'avg_cpu_powerjoular', 'avg_power'],
-            shuffle=True,
+            data_columns=['avg_cpu', 'avg_mem', 'avg_cpu_powerjoular', 'avg_power', 'time'],
+            shuffle=False,
         )
         return self.run_table_model
  
@@ -166,18 +172,31 @@ class RunnerConfig:
         location = str(context.run_dir) + '/'
 
 
-        if workload == 'MakeConsignment_1000':
-            self.jmeter_command = self.jmeter_command + "MakeConsignment.jmx -l " + location +  'results.jtl -Jusers=1000' 
-        elif workload == 'MakeConsignment_500':
-            self.jmeter_command = self.jmeter_command + "MakeConsignment.jmx -l "  + location +  'results.jtl -Jusers=500' 
-        elif workload == 'MakeConsignment_100':
-            self.jmeter_command = self.jmeter_command + "MakeConsignment.jmx -l "  + location +  'results.jtl -Jusers=100' 
+        if workload == 'buy_ticket_1000':
+            self.jmeter_command = self.jmeter_command + "buy_ticket_1000.jmx -l " + location +  'results.jtl' 
+            self.timeout = 250
+            # self.timeout = 5
+
+        elif workload == 'buy_ticket_500':
+            self.jmeter_command = self.jmeter_command + "buy_ticket_500.jmx -l "  + location +  'results.jtl' 
+            self.timeout = 187
+            # self.timeout = 5
+
+        elif workload == 'buy_ticket_100':
+            self.jmeter_command = self.jmeter_command + "buy_ticket_100.jmx -l "  + location +  'results.jtl' 
+            self.timeout = 182 
+            # self.timeout = 5
+
         elif workload == 'list_orders_1000':
-            self.jmeter_command = self.jmeter_command + "ListOrders.jmx -l "  + location +  'results.jtl -Jusers=1000' 
+            self.jmeter_command = self.jmeter_command + "ListOrders_1000.jmx -l "  + location +  'results.jtl'
+            self.timeout = 5
         elif workload == 'list_orders_500':
-            self.jmeter_command = self.jmeter_command + "ListOrders.jmx -l "  + location + 'results.jtl -Jusers=500' 
+            self.jmeter_command = self.jmeter_command + "ListOrders_500.jmx -l "  + location + 'results.jtl' 
+            self.timeout = 4
         elif workload == 'list_orders_100':
-            self.jmeter_command = self.jmeter_command + "ListOrders.jmx -l "  + location + 'results.jtl -Jusers=100'
+            self.jmeter_command = self.jmeter_command + "ListOrders_100.jmx -l "  + location + 'results.jtl'
+            self.timeout = 5 # check
+
         print("Jmeter successfully configured.")
 
 
@@ -187,20 +206,16 @@ class RunnerConfig:
 
         output.console_log("Config.start_measurement() called!")
 
-
-        print("Sleeping for 1 sec")
-        time.sleep(1)
-
-        print("Starting measurement..")
         contextGovernor = context.run_variation['Linux_Governor']
         contextWorkload = context.run_variation['Workload']
 
 
-        measurementCommand = '''timeout 5s docker stats --no-stream --format "table {{.Name}}\\t{{.CPUPerc}}\\t{{.MemUsage}}" | tail -n +2 | awk '{print $1","$2","$3}' >> '''
+        measurementCommand = f'timeout {self.timeout}s'+''' docker stats --format "table {{.Name}}\\t{{.CPUPerc}}\\t{{.MemUsage}}" | tail -n +2 | awk '{print $1","$2","$3}' >> '''
         self.dockerCsvFileName = "docker_usage" + "_" + contextGovernor + "_" + contextWorkload + '.csv'
         measurementCommand = measurementCommand + self.dockerCsvFileName
-
         print(measurementCommand)
+
+
         print("Establishing ssh connection...")
         self.ssh.connect('145.108.225.17', username='greenTeam', password='greenTea')
         print("ssh connect successful")
@@ -213,18 +228,17 @@ class RunnerConfig:
             governorCommand = 'echo greenTea | sudo -S cpufreq-set -g powersave'
 
         stdinG, stdoutG, stderrG = self.ssh.exec_command(governorCommand)
-        print("Powerjoular outputs:")
+        print("Governor outputs:")
         print(stdoutG.read().decode())
         print(stderrG.read().decode())
-
         print("Set linux governor to", contextGovernor)
 
         print("Running jmeter subprocess")
         result = subprocess.Popen(self.jmeter_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         print("Jmeter command run:", self.jmeter_command)
-
+        
         print("Starting Powerjoular")
-        profiler_cmd = 'echo greenTea | sudo -S timeout 5s powerjoular -l -f '
+        profiler_cmd = f'echo greenTea | sudo -S timeout {self.timeout}s powerjoular -l -f '
         self.powerjoularFileName = "powerjoular" + "_" + contextGovernor + "_" + contextWorkload + '.csv'
         profiler_cmd = profiler_cmd + self.powerjoularFileName
         print(profiler_cmd)
@@ -232,6 +246,14 @@ class RunnerConfig:
 
         stdinP, stdoutP, stderrP = self.ssh.exec_command(profiler_cmd)
         print("Started Powerjoular:", profiler_cmd)
+
+        # pidP = int(stdoutP.channel.recv(100).decode("utf-8"))
+        # # self.ssh.exec_command(f"kill {pidP}")
+
+        # def kill_command(signal, frame):
+        #     self.ssh.exec_command(f"kill {pidP}")
+
+        # signal.signal(signal.SIGINT, kill_command)
 
         print("Sending measurement command...")
         stdinD, stdoutD, stderrD = self.ssh.exec_command(measurementCommand)
@@ -242,6 +264,8 @@ class RunnerConfig:
         print("Docker measurement outputs:")
         print(stdoutD.read().decode())
         print(stderrD.read().decode())
+        print(f"Sleeping for {self.timeout}s...")
+        # time.sleep(self.timeout)
         self.ssh.close()
 
     def interact(self, context: RunnerContext) -> None:
@@ -313,7 +337,7 @@ class RunnerConfig:
         with open(context.run_dir / 'docker.csv') as f:
             reader = csv.reader(f)
             for row in reader:
-                if row[2] == '0B':
+                if row[2] == '0B' or row[1] == 'CPU' or row[2] == '%':
                     continue
 
                 value = float(row[1].strip('%'))
@@ -335,7 +359,8 @@ class RunnerConfig:
         # ========= powerjoular ==========
 
         data = pd.read_csv(context.run_dir / 'powerjoular.csv')
-        avg_cpu_powerjoular = data['CPU Utilization'].mean()
+        cpu_utilization = data['CPU Utilization']
+        avg_cpu_powerjoular = cpu_utilization[cpu_utilization >= 0].mean()
         avg_cpu_powerjoular = round(avg_cpu_powerjoular, 3)
 
         avg_power = data['Total Power'].mean()
@@ -346,7 +371,8 @@ class RunnerConfig:
             'avg_cpu': avg_cpu,
             'avg_mem': avg_mem,
             'avg_cpu_powerjoular': avg_cpu_powerjoular,
-            'avg_power': avg_power
+            'avg_power': avg_power,
+            'time': self.timeout
         }
 
         return run_data

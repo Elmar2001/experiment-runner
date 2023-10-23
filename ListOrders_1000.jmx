@@ -16,7 +16,7 @@
           <stringProp name="LoopController.loops">1</stringProp>
           <boolProp name="LoopController.continue_forever">false</boolProp>
         </elementProp>
-        <stringProp name="ThreadGroup.num_threads">100</stringProp>
+        <stringProp name="ThreadGroup.num_threads">1000</stringProp>
         <stringProp name="ThreadGroup.ramp_time">1</stringProp>
         <boolProp name="ThreadGroup.delayedStart">false</boolProp>
         <boolProp name="ThreadGroup.scheduler">false</boolProp>
@@ -92,13 +92,6 @@
             <stringProp name="filename"></stringProp>
           </ResultCollector>
           <hashTree/>
-          <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="JSON Extractor" enabled="true">
-            <stringProp name="JSONPostProcessor.referenceNames">token</stringProp>
-            <stringProp name="JSONPostProcessor.jsonPathExprs">$.data.token</stringProp>
-            <stringProp name="JSONPostProcessor.match_numbers"></stringProp>
-            <stringProp name="Sample.scope">all</stringProp>
-          </JSONPostProcessor>
-          <hashTree/>
           <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="HTTP Header Manager" enabled="true">
             <collectionProp name="HeaderManager.headers">
               <elementProp name="Referer&#x9;http" elementType="Header">
@@ -136,15 +129,30 @@
             </collectionProp>
           </HeaderManager>
           <hashTree/>
+          <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="JSON Extractor" enabled="true">
+            <stringProp name="JSONPostProcessor.referenceNames">token</stringProp>
+            <stringProp name="JSONPostProcessor.jsonPathExprs">$.data.token</stringProp>
+            <stringProp name="JSONPostProcessor.match_numbers"></stringProp>
+            <stringProp name="Sample.scope">all</stringProp>
+          </JSONPostProcessor>
+          <hashTree/>
         </hashTree>
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="MakeConsignment" enabled="true">
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="ListOrders" enabled="true">
           <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
           <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
             <collectionProp name="Arguments.arguments">
               <elementProp name="" elementType="HTTPArgument">
                 <boolProp name="HTTPArgument.always_encode">false</boolProp>
-                <stringProp name="Argument.value">{&quot;id&quot;: &quot;1294b810-87f4-4f52-ba5c-6f47fbf01423&quot;}&#xd;
-</stringProp>
+                <stringProp name="Argument.value">{&#xd;
+  &quot;loginId&quot;: &quot;4d2a46c7-71cb-4cf1-b5bb-b68406d9da6f&quot;,&#xd;
+  &quot;enableStateQuery&quot;: false,&#xd;
+  &quot;enableTravelDateQuery&quot;: false,&#xd;
+  &quot;enableBoughtDateQuery&quot;: false,&#xd;
+  &quot;travelDateStart&quot;: null,&#xd;
+  &quot;travelDateEnd&quot;: null,&#xd;
+  &quot;boughtDateStart&quot;: null,&#xd;
+  &quot;boughtDateEnd&quot;: null&#xd;
+}</stringProp>
                 <stringProp name="Argument.metadata">=</stringProp>
               </elementProp>
             </collectionProp>
@@ -152,9 +160,8 @@
           <stringProp name="HTTPSampler.domain">145.108.225.17</stringProp>
           <stringProp name="HTTPSampler.port">8080</stringProp>
           <stringProp name="HTTPSampler.protocol">http</stringProp>
-          <stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
-          <stringProp name="HTTPSampler.path">/api/v1/consignservice/consigns</stringProp>
-          <stringProp name="HTTPSampler.method">PUT</stringProp>
+          <stringProp name="HTTPSampler.path">/api/v1/orderservice/order/refresh</stringProp>
+          <stringProp name="HTTPSampler.method">POST</stringProp>
           <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
           <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
           <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
