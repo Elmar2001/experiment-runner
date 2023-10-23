@@ -1,0 +1,13 @@
+__run_id,__done,Linux_Governor,Workload,avg_cpu,avg_mem,avg_cpu_powerjoular,avg_power,time
+run_4,DONE,performance,list_orders_500,0.224,258.852,0.042,22.646,4
+run_9,DONE,powersave,list_orders_1000,2.064,261.742,0.078,23.27,5
+run_1,DONE,performance,buy_ticket_500,0.381,259.957,0.043,23.24,187
+run_5,DONE,performance,list_orders_100,0.318,259.051,0.039,23.184,5
+run_10,DONE,powersave,list_orders_500,0.24,263.048,0.021,20.107,4
+run_11,DONE,powersave,list_orders_100,2.654,260.514,0.117,23.127,5
+run_6,DONE,powersave,buy_ticket_1000,0.379,260.189,0.034,20.44,250
+run_0,DONE,performance,buy_ticket_1000,0.368,260.153,0.034,22.669,250
+run_7,DONE,powersave,buy_ticket_500,0.381,260.137,0.034,20.36,187
+run_2,DONE,performance,buy_ticket_100,0.365,260.107,0.033,22.823,182
+run_8,DONE,powersave,buy_ticket_100,0.382,260.163,0.033,20.532,182
+run_3,DONE,performance,list_orders_1000,0.267,259.736,0.039,21.299,5
