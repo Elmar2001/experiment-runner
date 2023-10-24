@@ -19,32 +19,58 @@ for (file in file_names) {
 
 data$energy <- data$avg_power * data$time
 
+install.packages("tidyr")
+library(tidyr)
+
 # Understanding the Data
 results_dict <- list(
   "Central Tendency - Mean" = list(
-    "avg_cpu" = mean(data$avg_cpu_powerjoular),
-    "avg_memory" = mean(data$avg_memory),
-    "avg_energy" = mean(data$energy),
-    "avg_power" = mean(data$avg_power)
+    "avg_cpu" = mean(as.numeric(data$avg_cpu)),
+    "avg_memory" = mean(as.numeric(data$avg_mem)),
+    "avg_energy" = mean(as.numeric(data$energy)),
+    "avg_power" = mean(as.numeric(data$avg_power))
   ),
   "Central Tendency - Median" = list(
-    "avg_cpu" = median(data$avg_cpu_powerjoular),
-    "avg_memory" = median(data$avg_memory),
-    "avg_energy" = median(data$energy),
-    "avg_power" = median(data$avg_power)
+    "avg_cpu" = median(as.numeric(data$avg_cpu)),
+    "avg_memory" = median(as.numeric(data$avg_mem)),
+    "avg_energy" = median(as.numeric(data$energy)),
+    "avg_power" = median(as.numeric(data$avg_power))
   ),
   "Dispersion - Standard Deviation" = list(
-    "avg_cpu" = sd(data$avg_cpu_powerjoular),
-    "avg_memory" = sd(data$avg_memory),
-    "avg_energy" = sd(data$energy),
-    "avg_power" = sd(data$avg_power)
+    "avg_cpu" = sd(as.numeric(data$avg_cpu)),
+    "avg_memory" = sd(as.numeric(data$avg_mem)),
+    "avg_energy" = sd(as.numeric(data$energy)),
+    "avg_power" = sd(as.numeric(data$avg_power))
+  ),
+  "Dispersion - Variance" = list(
+    "avg_cpu" = var(as.numeric(data$avg_cpu)),
+    "avg_memory" = var(as.numeric(data$avg_mem)),
+    "avg_energy" = var(as.numeric(data$energy)),
+    "avg_power" = var(as.numeric(data$avg_power)) 
   )
-  # Add more sections as needed
 )
 
-# Print the dictionary
-print("Summary Statistics:")
-print(results_dict)
+results_central <- as.data.frame(results_dict)
+
+# Clean the data frame to remove non-numeric characters
+results_central_cleaned <- lapply(results_central, function(x) as.numeric(gsub(",", "", x, fixed = TRUE)))
+
+# Transpose the data frame for the desired format
+results_central_cleaned <- t(results_central_cleaned)
+
+# Rename the columns with the correct number of names
+colnames(results_central_cleaned) <- c("avg_cpu", "avg_memory", "avg_energy", "avg_power")
+
+# Customize the row names
+rownames(results_central_cleaned) <- c("Mean", "Median", "Standard Deviation", "Variance")
+
+print(results_central_cleaned)
+
+# Format the table using kable
+formatted_table_central <- results_central_cleaned %>%
+  kable("html", escape = FALSE, format = "html") %>%
+  kable_styling("striped", full_width = FALSE) %>%
+  column_spec(1, bold = TRUE)
 
 
 # Box plots for Linux Governor and Workload
@@ -56,6 +82,67 @@ box_plot_workload <- ggplot(data, aes(x = Workload, y = energy)) +
 # Save box plots to files
 ggsave("box_plot_governor.png", plot = box_plot_governor)
 ggsave("box_plot_workload.png", plot = box_plot_workload)
+
+#qqplot for energy
+
+qqplot_for_energy_data <- rnorm(data$energy)  
+
+png("qqplot.png", width = 800, height = 600)
+qqnorm(qqplot_for_energy_data, main = "Q-Q Plot Energy", xlab = "", ylab = "")
+dev.off()
+
+#qqplot for power
+qqplot_for_power_data <- rnorm(data$avg_power)  
+
+png("qqplotpower.png", width = 800, height = 600)
+qqnorm(qqplot_for_power_data, main = "Q-Q Plot Power", xlab = "", ylab = "")
+dev.off()
+
+#qqplot for CPU
+qqplot_for_CPU_data <- rnorm(data$avg_cpu)  
+
+png("qqplotCPU.png", width = 800, height = 600)
+qqnorm(qqplot_for_CPU_data, main = "Q-Q Plot CPU", xlab = "", ylab = "")
+dev.off()
+
+#qqplot for memory
+qqplot_for_memory_data <- rnorm(data$avg_mem)  
+
+png("qqplotmemory.png", width = 800, height = 600)
+qqnorm(qqplot_for_memory_data, main = "Q-Q Plot Memory", xlab = "", ylab = "")
+dev.off()
+
+install.packages("knitr")
+install.packages("kableExtra")
+install.packages("webshot")
+library(knitr)
+library(kableExtra)
+library(webshot)
+
+#shapior for all dependent variables 
+data_list <- list(data$energy, data$avg_power, data$avg_cpu, data$avg_mem)
+
+# labels foe each dependent variables
+labels <- c("Energy", "Power", "CPU", "Memory")
+
+# Perform Shapiro-Wilk tests for each dataset
+shapiro_tests <- lapply(data_list, shapiro.test)
+
+# Create a data frame to store the results
+results_df <- data.frame(
+  Dataset = labels, 
+  Statistic = sapply(shapiro_tests, function(x) x$statistic),
+  P_Value = sapply(shapiro_tests, function(x) x$p.value),
+  Normality = sapply(shapiro_tests, function(x) ifelse(x$p.value < 0.05, "Not Normal", "Normal"))
+)
+
+formatted_table <- results_df %>%
+  kable("html", escape = FALSE) %>%
+  kable_styling("striped", full_width = FALSE) %>%
+  column_spec(1, bold = TRUE)
+
+# Print the formatted table (for display in RStudio)
+print(formatted_table)
 
 # Histograms
 histogram_cpu <- ggplot(data, aes(x = avg_cpu)) +
